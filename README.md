@@ -15,6 +15,7 @@
 │   ├── src/views/            每个业务模块一个页面
 │   ├── src/api/local-service.ts   本地数据服务：列表、筛选、动作流转、导出
 │   ├── src/data/             模块元数据 / 示例数据 / localStorage 持久化
+│   ├── src/features/freezing/  联络通道冻结与开挖工序台账（领域规则 + 独立持久化，双入口同源）
 │   ├── src/stores/           会话与筛选状态
 │   └── vite.config.ts        dev server 配置（open: false，无 /api 代理）
 ├── .gitignore
@@ -60,6 +61,39 @@ npm run build
 | 应急演练 | `drill` | 应急演练 | 演练编号、演练科目、演练日期 |
 | 班组进场 | `crew` | 施工班组 | 班组编号、班组名称、主要工种 |
 | 安全巡检 | `safety` | 巡检记录 | 巡检编号、巡检区域、巡检项目 |
+| 联络通道冻结与开挖工序台账 | `features/freezing`（入口 `crosspassage`、`freeze-monitor`） | 冻结孔/测温/进尺/二衬/隐患 | 孔号、设计温度、测温时刻、实测温度、进尺、浇筑仓段 |
+
+## 联络通道冻结与开挖工序台账
+
+独立于通用元数据 CRUD 的领域特性，代码在 `frontend/src/features/freezing/`，规则全部落在
+`rules.ts` 纯函数与 `store.ts` 动作里，页面组件不做业务判断。两个入口
+（`/crosspassage` 与 `/freeze-monitor`）以及「安全巡检」页底部的隐患清单读的是同一份
+localStorage 数据（键 `crosspassage-freezing:ledger:v1`），多标签页通过 `storage` 事件同步。
+
+落地的硬规则：
+
+- **按孔测温、按设计温度判定**：每个冻结孔最新读数不高于设计温度才算达标；从未取到读数的孔按
+  「待补测」计入未达标，缺温度的存量孔不编造历史读数。
+- **开挖闸门**：有测温中断/未完成轮次，或冻土帷幕未达标，开挖进尺登记一律挡回；退回信息逐孔写明
+  「还差多少度」或断在哪个孔。未达标的强挖不产生任何进尺与隐患。
+- **顺序闸门**：没有开挖进尺不能登记二衬浇筑（挡回并指出所缺步骤）；首仓二衬浇筑后进尺台账封闭。
+- **中断补测**：轮次中断时记录断掉的孔，恢复后只能从该孔接着补测，禁止跳孔、禁止拿旧读数顶替新数据；
+  一整班没取到读数时必须填写原因按「空班」收班，轮次不允许挂在半路。
+- **去重与原子性**：同一孔同一时刻（分钟）重复测温只保留第一条；同一单据重复递交只记一次；
+  每个动作先校验后一次落库，写不成就不留半条。
+- **隐患同源**：异常开挖进尺在同一事务里写入巡检待整改清单，并快照登记瞬间的未达标孔数，
+  台账与安全巡检两处条数、孔数完全一致；闭环处理结论回写后两处同步可见。
+- **存量回填**：「存量冻结孔按布孔日期重新入库」幂等执行，已存在孔位保留历史读数，仅补缺并按布孔
+  日期（同日按孔号）重排测温顺序。
+
+规则冒烟测试（纯 Node，经 esbuild 打包）：
+
+```bash
+cd frontend
+npx esbuild scripts/smoke-freezing.mjs --bundle --platform=node --format=esm --outfile=/tmp/s1.mjs && node /tmp/s1.mjs
+npx esbuild scripts/smoke-store.mjs  --bundle --platform=node --format=esm --outfile=/tmp/s2.mjs && node /tmp/s2.mjs
+```
+
 
 ## 约定
 

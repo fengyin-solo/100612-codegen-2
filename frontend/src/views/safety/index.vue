@@ -67,6 +67,12 @@
       <span>共 {{ total }} 条安全巡检记录</span>
       <span v-if="errorMessage" class="error-text">{{ errorMessage }}</span>
     </footer>
+
+    <h3 class="sync-title">联络通道冻结与开挖 · 待整改隐患（与工序台账同源）</h3>
+    <p v-if="freezeNotice" class="sync-notice" :class="freezeNotice.ok ? 'sync-ok' : 'sync-bad'">
+      {{ freezeNotice.message }}
+    </p>
+    <FreezeHazardPanel @notice="onFreezeNotice" />
   </section>
 </template>
 
@@ -79,6 +85,8 @@ import {
   moduleMeta,
   runAction as applyAction,
 } from '@/api/local-service'
+import FreezeHazardPanel from '@/features/freezing/components/HazardPanel.vue'
+import type { GateResult } from '@/features/freezing/types'
 import type { EntryRow } from '@/data/types'
 
 const meta = moduleMeta('safety')
@@ -133,5 +141,17 @@ function reload() {
   }
 }
 
+const freezeNotice = ref<GateResult | null>(null)
+function onFreezeNotice(result: GateResult) {
+  freezeNotice.value = result
+}
+
 onMounted(reload)
 </script>
+
+<style scoped>
+.sync-title { margin: 20px 0 8px; font-size: 16px; }
+.sync-notice { border-radius: 8px; padding: 8px 12px; font-size: 13px; margin: 0 0 10px; }
+.sync-ok { background: #f2fbf4; border: 1px solid #a6d5b0; color: #067647; }
+.sync-bad { background: #fef3f2; border: 1px solid #f0a9a2; color: #b42318; }
+</style>

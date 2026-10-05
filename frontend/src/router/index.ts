@@ -19,6 +19,8 @@ const Testing = () => import('@/views/testing/index.vue')
 const Drill = () => import('@/views/drill/index.vue')
 const Crew = () => import('@/views/crew/index.vue')
 const Safety = () => import('@/views/safety/index.vue')
+const CrossPassage = () => import('@/views/crosspassage/index.vue')
+const FreezeMonitor = () => import('@/views/freeze-monitor/index.vue')
 
 const router = createRouter({
   history: createWebHistory(),
@@ -41,6 +43,8 @@ const router = createRouter({
     { path: '/testing', name: 'testing', component: Testing },
     { path: '/drill', name: 'drill', component: Drill },
     { path: '/crew', name: 'crew', component: Crew },
+    { path: '/crosspassage', name: 'crosspassage', component: CrossPassage },
+    { path: '/freeze-monitor', name: 'freeze-monitor', component: FreezeMonitor },
     { path: '/safety', name: 'safety', component: Safety },
   ],
 })
