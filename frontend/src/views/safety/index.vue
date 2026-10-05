@@ -24,6 +24,8 @@
       </span>
     </p>
 
+    <HazardPanel :verdict="curtainVerdict" @result="showHazardResult" />
+
     <form class="filter-bar" @submit.prevent="reload">
       <label v-for="field in filterFields" :key="field" class="filter-item">
         <span>{{ field }}</span>
@@ -64,8 +66,9 @@
     </table>
 
     <footer class="page-foot">
-      <span>共 {{ total }} 条安全巡检记录</span>
+      <span>共 {{ total }} 条安全巡检记录；LDD 隐患 {{ hazardTotal }} 条由联络通道台账写入，与台账/监测入口同一份</span>
       <span v-if="errorMessage" class="error-text">{{ errorMessage }}</span>
+      <span v-if="hazardFlash" class="error-text">{{ hazardFlash }}</span>
     </footer>
   </section>
 </template>
@@ -79,6 +82,9 @@ import {
   moduleMeta,
   runAction as applyAction,
 } from '@/api/local-service'
+import HazardPanel from '@/views/freeze/components/HazardPanel.vue'
+import { assessCurtain } from '@/data/freeze-service'
+import { freezeState } from '@/data/freeze-store'
 import type { EntryRow } from '@/data/types'
 
 const meta = moduleMeta('safety')
@@ -98,6 +104,15 @@ const statusSummary = computed(() =>
     count: rows.value.filter((row) => String(row.status) === status).length,
   })),
 )
+
+// 联络通道台账回写到巡检的隐患清单：两处读同一份，条数对得上。
+const freeze = freezeState()
+const curtainVerdict = computed(() => assessCurtain(freeze))
+const hazardTotal = computed(() => freeze.hazards.length)
+const hazardFlash = ref('')
+function showHazardResult(message: string) {
+  hazardFlash.value = message
+}
 
 function resetFilters() {
   filters.value = {}
